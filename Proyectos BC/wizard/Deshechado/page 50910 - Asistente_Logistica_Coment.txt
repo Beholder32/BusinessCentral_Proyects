@@ -1,0 +1,317 @@
+page 50910 "Logistic Assistant 2"
+{
+    Caption = 'Asistente Logístico';
+    DataCaptionFields = "No.";
+    PageType = NavigatePage;
+    SourceTable = "Sales Header";
+    SourceTableTemporary = true;
+
+    layout
+    {
+        area(Content)
+        {
+            group(StandardBanner)
+            {
+                Editable = false;
+                Visible = TopBannerVisible and (CurrentStep < 3);
+
+                field(MediaRepositoryStandard; MediaResourcesStandard."Media Reference")
+                {
+                    ApplicationArea = All;
+                    ShowCaption = false;
+                }
+            }
+            group(FinishedBanner)
+            {
+                Editable = false;
+                Visible = TopBannerVisible and (CurrentStep = 3);
+                field(MediaResourcesDone; MediaResourcesDone."Media Reference")
+                {
+                    ApplicationArea = All;
+                    ShowCaption = false;
+                }
+            }
+            group(Step1)
+            {
+                Visible = CurrentStep = 1;
+                group("Ventana Bienvenida")
+                {
+                    Caption = 'Creación automática de líneas para Envío y Recibo de Contratos del alquiler';
+                    field("Numero de Contrato"; rec."No.")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Nº Cliente"; rec."Sell-to Customer No.")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Nombre Cliente"; rec."Sell-to Customer Name")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Centro de Responsabilidad"; rec."Responsibility Center")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                }
+                group("Seleccion de tipo de línea")
+                {
+                    Caption = 'Tipo de procedimiento';
+                    field(Enviar; Envio)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Envío';
+                        trigger OnValidate()
+                        begin
+                            ActivarEnvio();
+                        end;
+                    }
+                    field(Recibir; Recibo)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Recibo';
+                        trigger OnValidate()
+                        begin
+                            ActivarRecibo();
+                        end;
+                    }
+                }
+            }
+            group(Step2)
+            {
+                Visible = CurrentStep = 2;
+                group("Opcion A")
+                {
+                    Visible = Visible1;
+                    Caption = 'Líneas de Contrato';
+                    part(SubformEnvio; "Logistic Assistant Subform")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+
+                }
+                group("Opcion B")
+                {
+                    Visible = Visible2;
+                    Caption = 'Líneas de Contrato';
+                    part(SubformRecibo; "Logistic Assistant Subform")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                }
+            }
+            group(Step3)
+            {
+                Visible = CurrentStep = 3;
+                group("Opcion A Check")
+                {
+                    Visible = Visible1;
+                    Caption = 'Líneas de Contrato';
+                    group(DatosFormCheck1)
+                    {
+                        Visible = Visible1;
+                        part(SubformLanzadoEnv; "Asistente Logistica Lineas Ed")
+                        {
+                            ApplicationArea = All;
+                            Editable = false;
+                        }
+                    }
+                }
+                group("Opcion B Check")
+                {
+                    Visible = Visible2;
+                    Caption = 'Líneas de Contrato';
+                    group(DatosFormCheck2)
+                    {
+                        Visible = Visible1;
+                        Caption = 'Edicion de líneas';
+                        part(SubformLanzadoRec; "Asistente Logistica Lineas Ed")
+                        {
+                            ApplicationArea = All;
+                            Editable = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(ActionBack)
+            {
+                ApplicationArea = All;
+                Caption = 'Back';
+                InFooterBar = true;
+                Enabled = ActionBackAllowed;
+                Image = PreviousRecord;
+                trigger OnAction()
+                begin
+                    TakeStep(-1);
+                end;
+            }
+            action(ActionNext)
+            {
+                ApplicationArea = All;
+                Caption = 'Next';
+                InFooterBar = true;
+                Enabled = ActionNextAllowed;
+                Image = NextRecord;
+                trigger OnAction()
+                begin
+                    DarVisibilidad();
+                    TakeStep(1);
+                end;
+            }
+            action(ActionFinish)
+            {
+                ApplicationArea = All;
+                Caption = 'Finish';
+                InFooterBar = true;
+                Enabled = ActionFinishAllowed;
+                Image = Approve;
+                trigger OnAction()
+                begin
+                    CurrPage.Close();
+                end;
+            }
+        }
+    }
+
+    var
+        gLineNo: Integer;
+        Visible1: Boolean;
+        Visible2: Boolean;
+        Recibo: Boolean;
+        Envio: Boolean;
+        CurrentStep: Integer;
+        ActionBackAllowed: Boolean;
+        ActionNextAllowed: Boolean;
+        ActionFinishAllowed: Boolean;
+        TopBannerVisible: Boolean;
+
+        //----- VARIABLES PARA ALOJAR TABLAS ------
+        gSalesHeader: Record "Sales Header";
+        gSalesLineRecepcionEnv: Record "Sales Line" temporary;
+        //------ Tabla para sacar botones ------
+        MediaRepositoryStandard: Record "Media Repository";
+        MediaRepositoryDone: Record "Media Repository";
+        MediaResourcesStandard: Record "Media Resources";
+        MediaResourcesDone: Record "Media Resources";
+
+    // ----- PROCEDIMIENTOS -----
+
+    // ------ EXTRACCION DE LOS DATOS FINALES FILTRADOS ------
+    procedure RecuperdarDatosEnv(var tSalesLine: Record "Sales Line" temporary)
+    begin
+        gSalesLineRecepcionEnv.Reset();
+        gSalesLineRecepcionEnv.DeleteAll();
+
+        IF tSalesLine.IsEmpty then begin
+            tSalesLine.Reset();
+            exit;
+        end;
+
+        if tSalesLine.FindSet() then
+            repeat
+                gSalesLineRecepcionEnv.TransferFields(tSalesLine);
+                gSalesLineRecepcionEnv.Insert();
+            until tSalesLine.Next() = 0;
+
+        gSalesLineRecepcionEnv.FindFirst();
+    end;
+
+    procedure SetSalesHeader(pSalesHeader: Record "Sales Header")
+    begin
+        gSalesHeader.Reset();
+        gSalesHeader.SetRange("Document Type", pSalesHeader."Document Type");
+        gSalesHeader.SetRange("No.", pSalesHeader."No.");
+        gSalesHeader.FindFirst();
+    end;
+
+    local procedure DarVisibilidad()
+    begin
+        if Envio then begin
+            Visible1 := true;
+            Visible2 := false;
+
+            CurrPage.SubformEnvio.Page.SacarLineasEnv(Rec."No.");
+            CurrPage.SubformEnvio.Page.Update(false);
+
+            CurrPage.SubformLanzadoEnv.Page.SetMachineLines(gSalesLineRecepcionEnv);
+            CurrPage.SubformLanzadoEnv.Page.Update(false);
+        end else begin
+            Visible1 := false;
+            Visible2 := true;
+
+            CurrPage.SubformRecibo.Page.SacarLineasRec(Rec."No.");
+            CurrPage.SubformRecibo.Page.Update(false);
+        end;
+    end;
+
+    local procedure ActivarEnvio()
+    begin
+        if Envio then
+            Recibo := false
+        else
+            Recibo := true;
+    end;
+
+    local procedure ActivarRecibo()
+    begin
+        if Recibo then
+            Envio := false
+        else
+            Envio := true;
+    end;
+
+    local procedure SetControls()
+    begin
+        ActionBackAllowed := CurrentStep > 1;
+        ActionNextAllowed := CurrentStep < 3;
+        ActionFinishAllowed := CurrentStep = 3;
+    end;
+
+    local procedure TakeStep(Step: Integer)
+    begin
+        CurrentStep += Step;
+        SetControls;
+    end;
+
+    local procedure LoadTopBanners()
+    begin
+        if (MediaRepositoryStandard.Get('AssistedSetup-NoText-400px.png', Format(CurrentClientType())) and MediaRepositoryDone.Get('AssistedSetupDone-NoText-400px.png', Format(CurrentClientType())))
+        then
+            if MediaResourcesStandard.Get(MediaRepositoryStandard."Media Resources Ref") and MediaResourcesDone.Get(MediaRepositoryDone."Media Resources Ref")
+            then
+                TopBannerVisible := MediaResourcesDone."Media Reference".HasValue();
+    end;
+
+    // ----- DISPARADORES ------
+    trigger OnInit()
+    begin
+        LoadTopBanners;
+    end;
+
+    trigger OnOpenPage()
+    begin
+        CurrentStep := 1;
+        SetControls;
+
+        Envio := true;
+        Recibo := false;
+
+        Rec.Reset();
+        Rec.TransferFields(gSalesHeader);
+        Rec.Insert();
+        Rec.FindFirst();
+    end;
+}

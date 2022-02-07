@@ -1,0 +1,215 @@
+// INUTILIZADO
+page 50911 "Logistic Assistant Subform"
+{
+    PageType = ListPart;
+    SourceTable = "Sales Line";
+    Caption = 'Acciones de selección';
+    SourceTableTemporary = true; //No quitar esto si no quieres tener que buscar otro trabajo :)
+
+    layout
+    {
+        area(Content)
+        {
+            repeater(Lines)
+            {
+                field("No."; Rec."No.")
+                {
+                    ApplicationArea = All;
+                }
+                field("Número Máquina"; Rec."Machine No.")
+                {
+                    ApplicationArea = All;
+                }
+                field("Descripción"; Rec.Description)
+                {
+                    ApplicationArea = All;
+                }
+                field(Cantidad; Rec.Quantity)
+                {
+                    ApplicationArea = All;
+                }
+                field("Código Almacén"; Rec."Location Code")
+                {
+                    ApplicationArea = All;
+                }
+                field("Código Ubicación"; Rec."Bin Code")
+                {
+                    ApplicationArea = All;
+                }
+            }
+        }
+    }
+
+
+    actions
+    {
+        area(Processing)
+        {
+            /*
+            action("Boton Env")
+            {
+                Visible = Envio;
+                ApplicationArea = All;
+                Image = SetupLines;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Opens Machine Card';
+                trigger OnAction()
+                begin
+                    OpenLogisticAssistCardEnv();
+                end;
+            }
+            action("Boton Rec")
+            {
+                Visible = Recibo;
+                ApplicationArea = All;
+                Image = SetupLines;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Opens Machine Card';
+                trigger OnAction()
+                begin
+                    OpenLogisticAssistCardRec();
+                end;
+            }
+            */
+            action("Cargar Líneas Envío")
+            {
+                Visible = Envio;
+                ApplicationArea = All;
+                Image = SetupLines;
+                trigger OnAction()
+                begin
+                    CurrPage.SetSelectionFilter(Rec);
+                    //LogisticAssistLinesEnv.SetMachineLinesEnv(Rec);
+                end;
+            }
+        }
+    }
+
+
+    var
+        gSalesLine: Record "Sales Line";
+        Envio: Boolean;
+        Recibo: Boolean;
+        LogisticAssit: page "Logistic Assistant";
+        LogisticAssistLinesEnv: page "Asistente Logistica Lineas Rec";
+        LogisticAssistCardRec: page "Logistic Assistant Card Rec";
+        LogisticAssistCardEnv: page "Logistic Assistant Card Env";
+        temWhseReceiptLines: Record "RENT - Whse. Receipt Line" temporary;
+        temWhseShipmentLine: Record "RENT - Whse. Shipment Line" temporary;
+
+    // -------- PROCEDIMIENTOS ---------
+
+    //----- Funciones para sacar las lineas segun sean Envio o Registro -----
+    procedure SacarLineasEnv(Codigo: Code[20])
+    begin
+        Envio := true;
+        Recibo := false;
+        SetSalesLines(Codigo);
+    end;
+
+    procedure SacarLineasRec(Codigo: Code[20])
+    begin
+        Recibo := true;
+        Envio := false;
+        SetSalesLines(Codigo);
+    end;
+
+    // --- Funcion para extraer las líneas concretas que piden los procedimiento ---
+    local procedure SetSalesLines(DocumentNo: Code[20]) Respuesta: Boolean;
+    begin
+        Rec.Reset;
+        Rec.DeleteAll();
+
+        gSalesLine.Reset();
+        gSalesLine.SetRange(Type, gSalesLine.Type::Item);
+        gSalesLine.SetRange("Warehouse Qty. Received", 0);
+        if Envio then
+            gSalesLine.SetRange("Warehouse Qty. Shipped", 0);
+        if Recibo then
+            gSalesLine.SetRange("Warehouse Qty. Shipped", 1);
+        gSalesLine.SetRange("Document No.", DocumentNo);
+
+        //Temp_SalesLine.FindSet();
+        IF gSalesLine.IsEmpty then begin
+            gSalesLine.Reset();
+            exit;
+        end;
+
+        if gSalesLine.FindSet() then
+            repeat
+                Rec.TransferFields(gSalesLine);
+                Rec.Insert();
+            until gSalesLine.Next() = 0;
+
+        Rec.FindFirst();
+    end;
+
+    // Atraer los datos de
+
+
+
+    // ------ FUERA DE SERVICIO TODO LO DE ABAJO --------
+
+    // ----- Comprobación de registro entrante -----
+    local procedure ConsultaTablaRec(DocNo: Code[20]; LineNo: Integer) Respuesta: Boolean
+    begin
+        temWhseReceiptLines.Reset();
+        temWhseReceiptLines.SetRange("Source Type", Database::"Sales Line");
+        temWhseReceiptLines.SetRange("Source No.", DocNo);
+        temWhseReceiptLines.SetRange("Source Line No.", LineNo);
+        exit(NOT temWhseReceiptLines.IsEmpty);
+    end;
+
+    //----- Acción para el arranque del formulario para el relleno de datos -----
+    local procedure OpenLogisticAssistCardRec()
+    begin
+        Clear(LogisticAssistCardRec);
+
+        //Me muestra los datos de cabecera del producto dentro de la card
+        Rec."Warehouse Qty. to Receive" := Rec."Warehouse Qty. Shipped" - Rec."Warehouse Qty. Received";
+        LogisticAssistCardRec.SetSalesLines(Rec);
+
+        // Consultamos si existe el registro que nos está entrando. Si es true, hacemos la carga de sus datos
+        if ConsultaTablaRec(Rec."Document No.", Rec."Line No.") then begin
+            LogisticAssistCardRec.CargarLosDatosRecuperados(Rec, temWhseReceiptLines);
+        end;
+
+        //Nos llegan los datos insertados en la card
+        if LogisticAssistCardRec.RunModal() = Action::OK then begin
+            LogisticAssistCardRec.RecuperarDatosTempRec(Rec, temWhseReceiptLines);
+        end;
+
+    end;
+
+    // ----- PARA ENVIOS ------
+
+    local procedure ConsultaTablaEnv(DocNo: Code[20]; LineNo: Integer) Respuesta: Boolean
+    begin
+        temWhseShipmentLine.Reset();
+        temWhseShipmentLine.SetRange("Source Type", Database::"Sales Line");
+        temWhseShipmentLine.SetRange("Source No.", DocNo);
+        temWhseShipmentLine.SetRange("Source Line No.", LineNo);
+        exit(NOT temWhseShipmentLine.IsEmpty);
+    end;
+
+    local procedure OpenLogisticAssistCardEnv()
+    begin
+        Clear(LogisticAssistCardEnv);
+
+        //Me muestra los datos de cabecera del producto dentro de la card
+        Rec."Warehouse Qty. to Ship" := Rec."Qty. to Ship" - Rec."Warehouse Qty. Received";
+        LogisticAssistCardEnv.SetSalesLines(Rec, temWhseShipmentLine);
+
+        // Consultamos si existe el registro que nos está entrando. Si es true, hacemos la carga de sus datos
+        if ConsultaTablaEnv(Rec."Document No.", Rec."Line No.") then begin
+            LogisticAssistCardEnv.CargarLosDatosRecuperados(Rec, temWhseShipmentLine);
+        end;
+
+        //Nos llegan los datos insertados en la card
+        if LogisticAssistCardEnv.RunModal() = Action::OK then begin
+            LogisticAssistCardEnv.RecuperarDatosTempEnv(Rec, temWhseShipmentLine);
+        end;
+    end;
+}

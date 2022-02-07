@@ -1,0 +1,139 @@
+page 50913 "Logistic Assistant Card Rec"
+{
+    PageType = Card;
+    Caption = 'Activo';
+    DataCaptionFields = "Machine No.", Description;
+    ApplicationArea = All;
+    UsageCategory = Administration;
+    SourceTable = "Sales Line";
+    SourceTableTemporary = true;
+
+    layout
+    {
+        area(Content)
+        {
+            group("Recibo Contrato de Alquiler")
+            {
+                group(DatosForm2)
+                {
+                    Caption = 'Campos obligatorios';
+                    field("Numero de Maquina"; rec."No.")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Desc. de Maquina"; rec.Description)
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Cantidad de almacén para recibir"; Rec."Warehouse Qty. to Receive")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                        BlankZero = true;
+                        ShowMandatory = true;
+                    }
+                    field("Fecha de Recibo"; tReceiptLine."Receipt DateTime")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        ShowMandatory = true;
+                    }
+                    field("Fecha de Vencimiento Recip"; tReceiptLine."Due DateTime")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        ShowMandatory = true;
+                    }
+                    field("Responsable del transporte Recip"; tReceiptLine."Transport Responsible")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        ShowMandatory = true;
+                    }
+                    field("CIF Responsable Recip"; tReceiptLine."Responsible CIF/NIF")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        ShowMandatory = true;
+                    }
+                    field("Nº Matrícula Recip"; tReceiptLine."Responsible Plate No.")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        ShowMandatory = true;
+                    }
+                }
+            }
+        }
+    }
+
+    var
+        tReceiptLine: Record "RENT - Whse. Receipt Line" temporary;
+        Contador: Integer;
+
+    procedure SetSalesLines(importSalesLine: Record "Sales Line")
+    begin
+        //Proceso necesario para volcar una tabla temporal filtrada dentro del rec
+        Rec.Reset();
+        Rec.TransferFields(importSalesLine);
+        Rec.SetRange("Document Type", importSalesLine."Document Type");
+        Rec.SetRange("Document No.", importSalesLine."Document No.");
+        Rec.SetRange("Line No.", importSalesLine."Line No.");
+        Rec.Insert();
+        Rec.FindFirst();
+    end;
+
+    procedure RecuperarDatosTempRec(importSalesLine: Record "Sales Line"; var temRecTable: Record "RENT - Whse. Receipt Line" temporary)
+    begin
+        // ---- Checkeo de existencia de un registro con esa ID
+        temRecTable.Reset();
+        Contador := temRecTable.Count;
+        temRecTable.SetRange("Source Type", Database::"Sales Line");
+        temRecTable.SetRange("Source No.", importSalesLine."Document No.");
+        temRecTable.SetRange("Source Line No.", importSalesLine."Line No.");
+        if temRecTable.FindFirst() then begin
+            temRecTable."Receipt DateTime" := tReceiptLine."Receipt DateTime";
+            temRecTable."Due DateTime" := tReceiptLine."Due DateTime";
+            temRecTable."Transport Responsible" := tReceiptLine."Transport Responsible";
+            temRecTable."Responsible CIF/NIF" := tReceiptLine."Responsible CIF/NIF";
+            temRecTable."Responsible Plate No." := tReceiptLine."Responsible Plate No.";
+            temRecTable.Modify();
+        end else begin
+            temRecTable.reset;
+            temRecTable.init;
+            temRecTable."Source Type" := Database::"Sales Line";
+            temRecTable."Source No." := importSalesLine."Document No.";
+            temRecTable."Source Line No." := importSalesLine."Line No.";
+            temRecTable."Entry No." := Contador + 1; // Metodo de conteo provisional
+            temRecTable.Insert();
+            temRecTable."Receipt DateTime" := tReceiptLine."Receipt DateTime";
+            temRecTable."Due DateTime" := tReceiptLine."Due DateTime";
+            temRecTable."Transport Responsible" := tReceiptLine."Transport Responsible";
+            temRecTable."Responsible CIF/NIF" := tReceiptLine."Responsible CIF/NIF";
+            temRecTable."Responsible Plate No." := tReceiptLine."Responsible Plate No.";
+            temRecTable.Modify();
+        end;
+    end;
+
+
+    procedure CargarLosDatosRecuperados(importSalesLine: Record "Sales Line"; var temRecTable: Record "RENT - Whse. Receipt Line" temporary)
+    begin
+        temRecTable.Reset();
+        temRecTable.SetRange("Source Type", Database::"Sales Line");
+        temRecTable.SetRange("Source No.", importSalesLine."Document No.");
+        temRecTable.SetRange("Source Line No.", importSalesLine."Line No.");
+        if temRecTable.findfirst then begin
+            rec."Document No." := importSalesLine."Document No.";
+            rec."Line No." := importSalesLine."Line No.";
+            rec."Document Type" := importSalesLine."Document Type";
+            rec."Warehouse Qty. to Receive" := importSalesLine."Warehouse Qty. to Receive";
+            tReceiptLine."Receipt DateTime" := temRecTable."Receipt DateTime";
+            tReceiptLine."Due DateTime" := temRecTable."Due DateTime";
+            tReceiptLine."Transport Responsible" := temRecTable."Transport Responsible";
+            tReceiptLine."Responsible CIF/NIF" := temRecTable."Responsible CIF/NIF";
+            tReceiptLine."Responsible Plate No." := temRecTable."Responsible Plate No.";
+        end;
+    end;
+}

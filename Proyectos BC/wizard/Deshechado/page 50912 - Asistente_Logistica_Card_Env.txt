@@ -1,0 +1,250 @@
+page 50912 "Logistic Assistant Card Env"
+{
+    PageType = Card;
+    Caption = 'Activo';
+    DataCaptionFields = "Machine No.", Description;
+    ApplicationArea = All;
+    UsageCategory = Administration;
+    SourceTable = "Sales Line";
+    SourceTableTemporary = true;
+
+    layout
+    {
+        area(Content)
+        {
+            group("Envío Contrato de Alquiler")
+            {
+                group(DatosForm1)
+                {
+                    Caption = 'Campos obligatorios';
+                    field("Numero de Maquina"; Rec."No.")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Desc. de Maquina"; Rec.Description)
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                    }
+                    field("Cantidad de almacén para enviar"; Rec."Warehouse Qty. to Ship")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                        BlankZero = true;
+                        NotBlank = true;
+                    }
+                    field("Fecha de Envío"; TemShipmentLine."Shipment DateTime")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        NotBlank = true;
+                    }
+                    field("Fecha de Vencimiento Env"; TemShipmentLine."Due DateTime")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        NotBlank = true;
+                    }
+                    field("Responsable del transporte Env"; TemShipmentLine."Transport Responsible")
+                    {
+                        ApplicationArea = All;
+                        Editable = false;
+                        ShowMandatory = Resp; // Consultar como hacer un NotBlank Condicional
+                    }
+                    field("Número de Serie"; TemShipmentLine."Serial No.")
+                    {
+                        ApplicationArea = Suite;
+                        Editable = false;
+                        trigger OnAssistEdit()
+                        var
+                            ParkSituationQueryPage: page "RENT - Park Situation Query";
+                            RentSetup: Record "RENT - Setup";
+                        begin
+                            if TemShipmentLine."Transport Responsible" = TemShipmentLine."Transport Responsible"::Company then
+                                exit;
+                            RentSetup.get;
+                            RentSetup.testfield("Available Bin Code");
+
+                            if TemShipmentLine."Confirmed Item No." <> '' THEN
+                                ParkSituationQueryPage.SetSearchParams(Rec."Location Code", RentSetup."Available Bin Code", TemShipmentLine."Confirmed Item No.")
+                            else
+                                ParkSituationQueryPage.SetSearchParams(Rec."Location Code", RentSetup."Available Bin Code", Rec."No.");
+
+                            ParkSituationQueryPage.LookupMode(true);
+                            if ParkSituationQueryPage.RunModal() = action::LookupOk then begin
+                                TemShipmentLine.Validate("Confirmed Item No.", ParkSituationQueryPage.GetSelectedItemNo());
+                                TemShipmentLine.Validate("Serial No.", ParkSituationQueryPage.GetSelectedSerialNo());
+                            end;
+                        end;
+
+                        trigger OnValidate()
+                        var
+                            myInt: Integer;
+                        begin
+                            CurrPage.SaveRecord;
+                        end;
+                    }
+                    field("CIF Responsable Env"; TemShipmentLine."Responsible CIF/NIF")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        NotBlank = true;
+                    }
+                    field("Nº Matrícula Env"; TemShipmentLine."Responsible Plate No.")
+                    {
+                        ApplicationArea = All;
+                        Editable = true;
+                        NotBlank = true;
+                    }
+                }
+            }
+        }
+    }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(Cliente)
+            {
+                ApplicationArea = Basic, Suite;
+                Caption = 'Cliente';
+                Image = Customer;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Customer is in charge of Logistic.';
+
+                trigger OnAction()
+                var
+                    TransRespEnum: enum "RENT - Transport Responsible";
+                begin
+                    TemShipmentLine.TestField(status, TemShipmentLine.Status::" ");
+                    TemShipmentLine.VALIDATE("Transport Responsible", TransRespEnum::Customer);
+                    Resp := true;
+                    TemShipmentLine.Modify(true);
+                end;
+            }
+            action(Empresa)
+            {
+                ApplicationArea = Basic, Suite;
+                Caption = 'Empresa';
+                Image = Company;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Company is in charge of Logistic.';
+
+                trigger OnAction()
+                var
+                    TransRespEnum: enum "RENT - Transport Responsible";
+                begin
+                    TemShipmentLine.TestField(status, TemShipmentLine.Status::" ");
+                    TemShipmentLine.VALIDATE("Transport Responsible", TransRespEnum::Company);
+                    TemShipmentLine."Serial No." := '';
+                    Resp := false;
+                    TemShipmentLine.Modify(true);
+                end;
+            }
+        }
+    }
+
+    var
+        Resp: Boolean;
+        TemShipmentLine: Record "RENT - Whse. Shipment Line" temporary;
+        Contador: Integer;
+
+    procedure SetSalesLines(importSalesLine: Record "Sales Line"; var temEnvTable: Record "RENT - Whse. Shipment Line" temporary)
+    begin
+        //Proceso necesario para volcar una tabla temporal filtrada dentro del rec
+        Rec.Reset();
+        Rec.TransferFields(importSalesLine);
+        Rec.SetRange("Document Type", importSalesLine."Document Type");
+        Rec.SetRange("Document No.", importSalesLine."Document No.");
+        Rec.SetRange("Line No.", importSalesLine."Line No.");
+        Rec.Insert();
+        Rec.FindFirst();
+
+        //Inicializacion del contador para tener un registro ya hecho y poder majejar el botón Cliente/Empresa
+        temEnvTable.Reset();
+        Contador := temEnvTable.Count;
+        temEnvTable.SetRange("Source Type", Database::"Sales Line");
+        temEnvTable.SetRange("Source No.", importSalesLine."Document No.");
+        temEnvTable.SetRange("Source Line No.", importSalesLine."Line No.");
+        if not temEnvTable.FindFirst() then begin
+            temEnvTable.Reset();
+            Contador := temEnvTable.Count;
+            TemShipmentLine."Entry No." := Contador + 1;
+            TemShipmentLine.Insert();
+        end;
+
+    end;
+
+    procedure RecuperarDatosTempEnv(importSalesLine: Record "Sales Line"; var temEnvTable: Record "RENT - Whse. Shipment Line" temporary)
+    begin
+        // ---- Checkeo de existencia de un registro con esa ID
+
+        temEnvTable.Reset();
+        temEnvTable.SetRange("Source Type", Database::"Sales Line");
+        temEnvTable.SetRange("Source No.", importSalesLine."Document No.");
+        temEnvTable.SetRange("Source Line No.", importSalesLine."Line No.");
+
+        if temEnvTable.FindFirst() then begin
+            temEnvTable."Shipment DateTime" := TemShipmentLine."Shipment DateTime";
+            temEnvTable."Due DateTime" := TemShipmentLine."Due DateTime";
+            temEnvTable."Transport Responsible" := TemShipmentLine."Transport Responsible";
+            temEnvTable."Responsible CIF/NIF" := TemShipmentLine."Responsible CIF/NIF";
+            temEnvTable."Responsible Plate No." := TemShipmentLine."Responsible Plate No.";
+            temEnvTable."Serial No." := TemShipmentLine."Serial No.";
+            temEnvTable."Original Item No." := Rec."No.";
+            temEnvTable."Location Code" := Rec."Location Code";
+            temEnvTable.Modify();
+        end else begin
+            temEnvTable.reset;
+            temEnvTable.init;
+            temEnvTable."Source Type" := Database::"Sales Line";
+            temEnvTable."Source No." := importSalesLine."Document No.";
+            temEnvTable."Source Line No." := importSalesLine."Line No.";
+
+            temEnvTable."Entry No." := TemShipmentLine."Entry No.";
+            temEnvTable.Insert();
+
+            temEnvTable."Shipment DateTime" := TemShipmentLine."Shipment DateTime";
+            temEnvTable."Due DateTime" := TemShipmentLine."Due DateTime";
+            temEnvTable."Transport Responsible" := TemShipmentLine."Transport Responsible";
+            temEnvTable."Responsible CIF/NIF" := TemShipmentLine."Responsible CIF/NIF";
+            temEnvTable."Responsible Plate No." := TemShipmentLine."Responsible Plate No.";
+            temEnvTable."Original Item No." := TemShipmentLine."Original Item No.";
+            temEnvTable."Serial No." := TemShipmentLine."Serial No.";
+            temEnvTable."Location Code" := Rec."Location Code";
+            temEnvTable.Modify();
+
+        end;
+    end;
+
+
+    procedure CargarLosDatosRecuperados(importSalesLine: Record "Sales Line"; var temEnvTable: Record "RENT - Whse. Shipment Line" temporary)
+    begin
+        temEnvTable.Reset();
+        temEnvTable.SetRange("Source Type", Database::"Sales Line");
+        temEnvTable.SetRange("Source No.", importSalesLine."Document No.");
+        temEnvTable.SetRange("Source Line No.", importSalesLine."Line No.");
+        if temEnvTable.findfirst then begin
+            rec."Document No." := importSalesLine."Document No.";
+            rec."Line No." := importSalesLine."Line No.";
+            rec."Document Type" := importSalesLine."Document Type";
+            rec."Warehouse Qty. to Ship" := importSalesLine."Warehouse Qty. to Ship";
+            TemShipmentLine."Entry No." := temEnvTable."Entry No.";
+            TemShipmentLine."Shipment DateTime" := temEnvTable."Shipment DateTime";
+            TemShipmentLine."Due DateTime" := temEnvTable."Due DateTime";
+            TemShipmentLine."Transport Responsible" := temEnvTable."Transport Responsible";
+            TemShipmentLine."Responsible CIF/NIF" := temEnvTable."Responsible CIF/NIF";
+            TemShipmentLine."Responsible Plate No." := temEnvTable."Responsible Plate No.";
+            TemShipmentLine."Original Item No." := temEnvTable."Original Item No.";
+            TemShipmentLine."Location Code" := temEnvTable."Location Code";
+            TemShipmentLine."Serial No." := temEnvTable."Serial No.";
+            TemShipmentLine.Insert();
+        end;
+    end;
+}
+
+// Muy posible fuera de uso
