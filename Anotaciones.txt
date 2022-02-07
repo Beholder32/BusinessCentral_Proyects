@@ -1,0 +1,53 @@
+win+g -> grabar videos en windows
+
+AL - https://docs.microsoft.com/es-es/learn/paths/application-foundation-al-language/
+AL (EN) - https://docs.microsoft.com/en-us/learn/modules/intro-basics-al-programming/
+
+Business Central
+https://docs.microsoft.com/es-es/learn/certifications/exams/mb-800
+
+Tutoriales para BC
+
+-Muy completo
+https://www.youtube.com/watch?v=0hSrf1IXsSM&list=PL79Z40BeLOVlPWHLoHAH3-8-kLO679EVg&index=1
+
+https://www.youtube.com/channel/UC0J_2ambYPACVsARrAuafOg/videos
+
+Tutorial para Report Builder
+https://www.youtube.com/watch?v=ObiS7poMOkA
+https://navinsights.net/2020/11/17/how-to-translate-copied-reports/ - TRADUCIR TEXTOS DE REPORT
+
+Japo de BC
+https://yzhums.com/5625/
+https://yzhums.com/13136/
+https://yzhums.com/11876/
+https://yzhums.com/13602/ - Idiomas
+https://yzhums.com/5774/ - Campos DropDown
+https://yzhums.com/4940/ - Checkeo de campos
+https://yzhums.com/4869/ - Querys con tabla y pagina
+https://yzhums.com/1799/ - Mandar un mail
+https://yzhums.com/4180/ - General Excel
+
+Report Builder tabla dentro de report
+https://forum.mibuso.com/discussion/65638/the-tablix-has-a-detail-member-with-inner-members-detail-members-can-only-contain-static-members
+
+BC Asistente
+https://ksdconsultancy.blog/2018/12/19/creating-a-wizard-page-in-al-for-business-central/
+https://www.msnjournals.com/post/how-to-create-assisted-setup-for-your-business-central-extension
+https://www.youtube.com/watch?v=8aPd9QR_KkE
+https://community.dynamics.com/business/f/dynamics-365-business-central-forum/376056/pass-record-from-one-page-to-another-page-without-save-data-to-table
+
+crear card de forma dinamica ->
+https://community.dynamics.com/business/b/navvanvugts/posts/how-to-create-a-one-page-matrix
+
+imagenes iconos -> https://forum.mibuso.com/discussion/75746/action-icons-business-central-170
+
+conectar con CRM -> https://www.youtube.com/watch?v=Mvhte_kuxoE
+
+PAI para BC -> https://www.kauffmann.nl/2020/03/05/codeunit-apis-in-business-central/
+
+Crear excel y enviarlo por mail -> https://www.kauffmann.nl/2020/01/18/how-to-use-the-excel-buffer-in-business-central-cloud/
+https://github.com/rstefanetti/AL-Code-Samples-Education/blob/Send-Email-with-Multi-Attachments/Cdu50215.SendEmailStream.al
+https://simplanova.com/blog/dynamics-365-business-central-email-and-email-message-basics/
+
+Contabilidad -> https://www.youtube.com/watch?v=0fPZxGc18Ps&list=PLuQITQSfEnlJTIhGdNg6l424ZFpV1_3vU&index=10
