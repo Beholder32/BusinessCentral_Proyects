@@ -1,4 +1,4 @@
-page 50916 "Logistic Assistant"
+page 50000 "Logistic Assistant"
 {
     Caption = 'Asistente Logístico';
     DataCaptionFields = "No.";
