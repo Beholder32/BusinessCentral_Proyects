@@ -1,4 +1,4 @@
-page 50915 "Asistente Logistica Lineas Env"
+page 50001 "Asistente Logistica Lineas Env"
 {
     PageType = ListPart;
     InsertAllowed = false;
