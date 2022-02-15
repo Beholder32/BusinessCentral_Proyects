@@ -1,7 +1,7 @@
 /// <summary>
 /// Report DOCS - Contrato Alquiler HUNE (ID 50905).
 /// </summary>
-report 50905 "DOCS - Contrato Alquiler HUNE"
+report 50000 "DOCS - Contrato Alquiler HUNE"
 {
     UsageCategory = ReportsAndAnalysis;
     ApplicationArea = All;
