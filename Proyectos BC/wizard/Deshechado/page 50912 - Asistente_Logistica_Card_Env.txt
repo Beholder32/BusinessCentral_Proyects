@@ -1,4 +1,4 @@
-page 50912 "Logistic Assistant Card Env"
+page 50002 "Logistic Assistant Card Env"
 {
     PageType = Card;
     Caption = 'Activo';
