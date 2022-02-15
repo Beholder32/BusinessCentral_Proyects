@@ -1,5 +1,5 @@
 // INUTILIZADO
-page 50911 "Logistic Assistant Subform"
+page 50001 "Logistic Assistant Subform"
 {
     PageType = ListPart;
     SourceTable = "Sales Line";
