@@ -1,4 +1,4 @@
-page 50913 "Logistic Assistant Card Rec"
+page 50003 "Logistic Assistant Card Rec"
 {
     PageType = Card;
     Caption = 'Activo';
